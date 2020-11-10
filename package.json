@@ -1,0 +1,38 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "LETS FUCKING GOOOO",
+  "main": "index.js",
+  "scripts": {
+    "test": "nom run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Advencher/amazing.git"
+  },
+  "keywords": [
+    "learn",
+    "REST microservice",
+    "portfolio"
+  ],
+  "author": "Aleksandr Arkhipov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Advencher/amazing/issues"
+  },
+  "homepage": "https://github.com/Advencher/amazing#readme",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "boom": "^7.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "fastify": "^3.7.0",
+    "fastify-plugin": "^3.0.0",
+    "fetch": "^1.1.0",
+    "middie": "^5.2.0",
+    "mongod": "^2.0.0",
+    "mongoose": "^5.10.12",
+    "node-fetch": "^2.6.1"
+  },
+  "type": "module"
+}
