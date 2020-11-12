@@ -2,7 +2,7 @@ import { BonusController } from '../controller/BonusController.js';
 let bonusController = new BonusController();
 export const routes = [{
         method: 'GET',
-        url: '/api/verify_client/:phone/:cardNumber',
+        url: '/api/verify_client',
         handler: bonusController.verifyClient
     },
     {

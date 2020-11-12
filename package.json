@@ -29,6 +29,7 @@
     "fastify": "^3.7.0",
     "fastify-plugin": "^3.0.0",
     "fetch": "^1.1.0",
+    "jsondiffpatch": "^0.4.1",
     "middie": "^5.2.0",
     "mongod": "^2.0.0",
     "mongoose": "^5.10.12",
