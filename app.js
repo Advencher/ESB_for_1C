@@ -1,13 +1,14 @@
 import fastify from 'fastify';
-import {routes} from './route/bonusRoutes.js';
-import {dbConnector} from './config/db.js'; 
+import {makeRoutes} from './route/bonusRoutes.js';
 import fastifyPlugin from 'fastify-plugin';
 import fastifyFormbody from 'fastify-formbody';
 import middie from 'middie';
+import {dbConnector} from './config/db.js'; 
+
 
 const PORT = process.env.PORT || 3000;
 
-const app = fastify();
+let app = fastify();
 app.get("/", async () => {
     return {
       Message: "Welcome to 1С API middleware"
@@ -22,8 +23,7 @@ app.addContentTypeParser('application/jsoff', function (request, payload, done) 
 })
 
 
-routes.forEach((route, index) => {
-  app.route(route)})
+
 
 async function build () {
   await app.register(middie)
@@ -32,6 +32,9 @@ async function build () {
   return app
 }
 
+
+
 build()
-  .then(app => app.listen(3000))
+  .then(app => makeRoutes(app))
+  .then(app => {app.listen(3000)})
   .catch(console.log)
