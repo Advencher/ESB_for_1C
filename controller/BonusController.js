@@ -22,49 +22,11 @@ export class BonusController {
     };
 
     this.verifyClient = this.verifyClient.bind(this);
-    this.chageTableProperties = this.chageTableProperties.bind(this);
+    //this.chageTableProperties = this.chageTableProperties.bind(this);
   }
 
-  async queryData(req, res) {
-    if (!req.query.collection) {
-      return Boom.boomify(new Error(), {
-        statusCode: 404,
-        message: "Параметр collection не указан",
-      });
-    }
-    const collection = this.mongo.model(req.query.collection);
-    let query = {},
-      projection = {};
-    let check =
-      req.query.collection === "User"
-        ? res
-            .status(500)
-            .send({
-              statusCode: 500,
-              message: "Not gonna give you all the users :)",
-            })
-        : (projection = { _id: 0, __v: 0 });
-    if (req.query.select) {
-      query = req.query.select;
-    }
-    if (req.query.projection) {
-      projection = { ...JSON.parse(req.query.projection), ...projection };
-    }
 
-    const queryResult = await collection
-      .find(query, projection)
-      .lean()
-      .exec(function (err, doc) {
-        if (err) {
-          return Boom.boomify(err, {
-            message: "ошибка во время запроса (╯°□°）╯︵ ┻━┻",
-          });
-        }
-        return res.status(200).send(JSON.stringify(doc));
-      });
-  }
-
-  //рекурсивная проверка статуса сервера
+  //рекурсивная проверка статуса сервераs
   async checkClientVerification(req, res, retries = 3, backoff = 300) {
     return fetch(
       `${API_1C_BONUS_CLIENT_URL}getclient?phone=${req.query.phone}&barcode=${req.query.barcode}`,
@@ -107,74 +69,9 @@ export class BonusController {
     } else return clientVerificationData;
   }
 
-  async createKey(req, res, collection) {
-    let type = dataTypeChecker(req.body.new_key);
-    let addNewField;
-
-    switch (type) {
-      case "String":
-        addNewField = await collection.schema.add({
-          [req.body.new_key]: "String",
-        });
-        break;
-
-      case "Array":
-        addNewField = await collection.schema.add({
-          [req.body.new_key]: "Array",
-        });
-        break;
-
-      case "Object":
-        addNewField = await collection.schema.add({
-          [req.body.new_key]: "Object",
-        });
-        break;
-
-      default:
-        return Boom.methodNotAllowed("Только Array, Object или String");
-        break;
-    }
-
-    if (type === "String") {
-      //const aggregate = collection.aggregate.addFields([{[req.body.new_key]: 'default_value' }]);
-      // collection.update();
-    } else if (type === "Array") {
-      return res.status(200).json(collection.schema.paths);
-    } else {
-      return Boom.methodNotAllowed(
-        "Метод принимает одно новое поле или массив новых полей в поле new_key методом POST"
-      );
-    }
-  }
-
-  async deleteKey(req, res, collection) {}
-
-  async updateKey(req, res, collection) {}
-
-  async chageTableProperties(req, res, next) {
-    if (!req.body.collection) return;
-    //const db = fastify.mongo.db;
-    let collection = this.mongo.model(req.body.collection);
-    switch (req.body.operation) {
-      case "add_property":
-        return await this.createKey(req, res, collection);
-      case "delete_property":
-        return await this.deleteKey(req, res, collection);
-      case "update_property":
-        return await this.updateKey(req, res, collection);
-      case "create_table":
-        return await this.createTable(req, res, collection);
-      default:
-        return Boom.methodNotAllowed(
-          "операция не указана, или указана не верно\n доступные операции add|delete|update_property, create_table"
-        );
-    }
-  }
-
-
-  
   //поиск записи в таблице клиента mongodb (асинхронно)
   async verifyClientInMongo(req) {
+    
     const findClient = clients
       .findOne(
         {
@@ -188,7 +85,10 @@ export class BonusController {
         return res;
       });
   }
-  async fetchAllClients(req, reply) {
-    let clients = await fetch(`${API_1C_BONUS_CLIENT_URL}`);
-  }
+
+
+
+
+
+
 }

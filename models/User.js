@@ -5,8 +5,8 @@ var UserSchema = new mongoose.Schema({
     name: String,
     password: String
   },
-{ timestamps: false });
+{ timestamps: false, strict: false});
 
 
 
-export default mongoose.model('User', UserSchema);
+export default mongoose.model('User', UserSchema, 'users');

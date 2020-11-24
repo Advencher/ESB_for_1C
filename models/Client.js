@@ -8,7 +8,7 @@ const ClientSchema = new mongoose.Schema(
     phone: { type: String, required: true },
     fullName: {type: String, required: true}
   },
-  { timestamps: false }
+  { timestamps: false, strict: false }
 );
 
 ClientSchema.options.toJSON = {

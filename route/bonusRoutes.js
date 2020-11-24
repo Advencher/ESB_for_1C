@@ -1,37 +1,40 @@
 import { BonusController } from '../controller/BonusController.js';
 import { AuthController } from '../controller/AuthController.js';
-
+import { MongoController } from '../controller/MongoController.js';
 
 export function makeRoutes (fastify, options) {
 
     let authController = new AuthController();
     let bonusController = new BonusController(fastify.mongo);
+    let mongoController = new MongoController(fastify.mongoNative);
 
-    const routes = [{
+    const routes = [
+        
+    //1C api mimic    
+    {
         method: 'GET',
         url: '/app/verify_client',
         preHandler: authController.verifyToken,
         handler: bonusController.verifyClient
     },
-    
+
+    //mongodb database methods
     {
         method: 'GET',
         url: '/app/query_data',
         preHandler: authController.verifyToken,
-        handler: bonusController.queryData
+        handler: mongoController.queryData
     },
-    {
-        method: 'GET',
-        url: '/api/post/:id',
-        handler: bonusController.fetchAllClients
-    },
+
+
     {
         method: 'POST',
         url: '/app/sync_data',
         preHandler: authController.verifyToken,
-        handler: bonusController.chageTableProperties
+        handler: mongoController.chageTableProperties
     },
-    
+
+    //Auth methods
     {
         method: 'POST',
         url: '/auth/register',

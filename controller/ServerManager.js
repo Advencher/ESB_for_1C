@@ -1,8 +1,11 @@
 export class ApiRequestManager {
 
-  constructor() {}
+  constructor() {
+    this.retryCodes = [408, 500, 502, 503, 504, 522, 524];
+  }
 
   //api info fetcher
+  //checks is a server available then fetches data 
   async checkAPIForUp(
     req,
     res,

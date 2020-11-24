@@ -52,8 +52,8 @@ export class AuthController {
     });
   }
 
-  signIn(req, res, next) {
-    User.findOne({ name: req.body.name }, function (err, user) {
+  async signIn(req, res, next) {
+    await User.findOne({ name: req.body.name }, function (err, user) {
       if (err) return res.status(500).send("Ошибка на сервере.");
       if (!user) return res.status(404).send("Пользователя не существует.");
 
