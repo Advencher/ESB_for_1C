@@ -7,6 +7,4 @@ var UserSchema = new mongoose.Schema({
   },
 { timestamps: false, strict: false});
 
-
-
-export default mongoose.model('User', UserSchema, 'users');
+export default mongoose.model('User', UserSchema);

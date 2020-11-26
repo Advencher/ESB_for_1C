@@ -2,7 +2,7 @@ let secObj = {
     //валера придумал секретное слово
     'secret': 'gibiscus',
 
-    //максим придумал секретное слово 
+    //александр придумал секретное слово 
     'codeword': 'coffeine'
 };
 export default secObj;

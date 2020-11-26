@@ -25,15 +25,18 @@ export function makeRoutes (fastify, options) {
         preHandler: authController.verifyToken,
         handler: mongoController.queryData
     },
-
-
     {
         method: 'POST',
         url: '/app/sync_data',
         preHandler: authController.verifyToken,
         handler: mongoController.chageTableProperties
     },
-
+    {
+        method: 'POST',
+        url: '/app/crud',
+        preHandler: authController.verifyToken,
+        handler: mongoController.updateCollection
+    },
     //Auth methods
     {
         method: 'POST',

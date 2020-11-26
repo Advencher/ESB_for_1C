@@ -27,7 +27,7 @@ export async function dbConnector(fastify, options, done) {
 
   try {
     //const url = "mongodb://localhost:27017/rapid_1c_requests";
-    const dbNative = await MongoClient.connect(url, {
+    let dbNative = await MongoClient.connect(url, {
       useNewUrlParser: true,
       useUnifiedTopology: true
     });

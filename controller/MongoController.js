@@ -1,4 +1,4 @@
-import Boom from "boom";
+import Boom, { boomify } from "boom";
 import isEmptyObject, { dataTypeChecker } from "../utils/DataTypeChecker.js";
 
 export class MongoController {
@@ -6,6 +6,7 @@ export class MongoController {
     this.mongoNative = mongoNative;
     this.chageTableProperties = this.chageTableProperties.bind(this);
     this.queryData = this.queryData.bind(this);
+    this.updateCollection = this.updateCollection(this);
   }
 
   async chageTableProperties(req, res, next) {
@@ -17,7 +18,9 @@ export class MongoController {
 
     let collection;
     try {
-      collection = this.mongoNative.model(req.query.collection);
+      collection = await this.mongoNative
+        .db("rapid_1c_requests")
+        .collection(req.query.collection);
     } catch (error) {
       return Boom.boomify(error, { statusCode: 404 });
     }
@@ -45,7 +48,9 @@ export class MongoController {
         message: "Параметр collection не указан",
       });
     }
-    const collection = this.mongoNative.model(req.query.collection);
+    const collection = this.mongoNative
+      .db("rapid_1c_requests")
+      .collection(req.query.collection);
     if (!collection)
       return Boom.boomify(
         new Error(`не найдена коллекция с именем <${req.query.collection}>`),
@@ -54,10 +59,10 @@ export class MongoController {
     let query = {},
       projection = {};
     let check =
-      req.query.collection === "User"
+      req.query.collection === "users"
         ? res.status(500).send({
             statusCode: 500,
-            message: "Not gonna give you all the users :)",
+            message: "No users for you :)",
           })
         : (projection = { _id: 0, __v: 0 });
     if (req.query.select) {
@@ -67,17 +72,14 @@ export class MongoController {
       projection = { ...JSON.parse(req.query.projection), ...projection };
     }
 
-    const queryResult = await collection
-      .find(query, projection)
-      .lean()
-      .exec(function (err, doc) {
-        if (err) {
-          return Boom.boomify(err, {
-            message: "ошибка во время запроса (╯°□°）╯︵ ┻━┻",
-          });
-        }
-        return res.status(200).send(JSON.stringify(doc));
+    try {
+      const queryResult = await collection.find(query, projection).toArray();
+      return res.status(200).send(doc);
+    } catch (error) {
+      return Boom.boomify(err, {
+        message: "ошибка во время запроса (╯°□°）╯︵ ┻━┻",
       });
+    }
   }
 
   //методы для управления таблицами в mongodb
@@ -96,55 +98,57 @@ export class MongoController {
     try {
       switch (req.body.data_type) {
         case "String":
-          addNewField = await collection.schema.add({
-            [req.body.new_key]: "String",
-          });
+          addNewField = await collection.updateMany(
+            {},
+            { $set: { [req.body.new_key]: "default_string" } },
+            { strict: false }
+          );
           break;
 
         case "Array":
-
-          // addNewField = await collection.schema.add({
-          //    [req.body.new_key]: "Array",
-          // });
-          await collection.updateMany(
-            {}, 
-            {[req.body.new_key] : [] },
-            {multi:true, strict: false}, 
-              function(err, numberAffected){  
-            });
+          addNewField = await collection.updateMany(
+            {},
+            { $set: { [req.body.new_key]: [] } },
+            { strict: false }
+          );
           break;
 
         case "Object":
-          addNewField = await collection.schema.add({
-            [req.body.new_key]: "Object",
-          });
+          addNewField = await collection.updateMany(
+            {},
+            { $set: { [req.body.new_key]: {} } },
+            { strict: false }
+          );
           break;
 
         case "Number":
-          addNewField = await collection.schema.add({
-            [req.body.new_key]: "Number",
-          });
+          addNewField = await collection.updateMany(
+            {},
+            { $set: { [req.body.new_key]: 0 } },
+            { strict: false }
+          );
           break;
-
         default:
           return Boom.badRequest("Только Array, Object, Number или String");
       }
     } catch (err) {
       return Boom.boomify(err, {
         message:
-          "при добавлении поля произошла ошибка, возможно поле с такм именем уже существует",
+          "при добавлении поля произошла ошибка, возможно поле с таким именем уже существует",
       });
     }
 
-    return res
-      .status(200)
-      .send(
-        { Success: `Поле с именем <${req.body.new_key}> успешно добавлено`,
-        CollectionName: `${collection.modelName}`,
-        NewStructure: `${JSON.stringify(collection.schema.paths)}`}
-      );
+    let newKeys = [];
+    let doc = await collection.findOne();
+    for (let key in doc) newKeys.push(key);
+    return res.status(200).send({
+      Success: `Поле с именем <${req.body.new_key}> успешно добавлено`,
+      CollectionName: `${collection.collectionName}`,
+      NewStructure: `${newKeys}`,
+    });
   }
 
+  //delete key from table
   async deleteKey(req, res, collection) {
     if (!req.body.remove_key)
       return Boom.boomify(
@@ -157,18 +161,20 @@ export class MongoController {
         { $unset: { [req.body.remove_key]: 1 } }
       );
       if (resultRemove.modifiedCount > 0) {
-        return res.status(200).send(
-         { 
-            Success: `Поле с именем <${req.body.remove_key}> успешно удалено из таблицы`,
-            CollectionName: `${collection.prototype.modelName}`,
-            NewStructure: `${collection.prototype.paths}`,
-            DocumentsChanged: `${resultRemove.modifiedCount}`
-          }
-        );
+        let newKeys = [];
+        let doc = await collection.findOne();
+        for (let key in doc) newKeys.push(key);
+        return res.status(200).send({
+          Success: `Поле с именем <${req.body.remove_key}> успешно удалено из таблицы`,
+          CollectionName: `${collection.collectionName}`,
+          NewStructure: newKeys,
+          DocumentsChanged: `${resultRemove.modifiedCount}`,
+          MatchCount: `${resultRemove.matchedCount}`,
+        });
       } else
         return res.status(200).send({
-      Failure: `в таблице с именем <${collection.prototype.modelName}> не существует поля <${req.query.remove_key}>`
-    });
+          Failure: `в таблице с именем <${collection.collectionName}> не существует поля <${req.body.remove_key}>`,
+        });
     } catch (err) {
       return Boom.boomify(err, {
         statusCode: 404,
@@ -177,6 +183,7 @@ export class MongoController {
     }
   }
 
+  //update key
   async updateKey(req, res, collection) {
     if (!req.body.query_object)
       return Boom.boomify(
@@ -188,14 +195,27 @@ export class MongoController {
         }
       );
     try {
-      let old_keys = collection.schema.paths;
+      let newKeys,
+        old_keys = [];
+      let doc = await collection.findOne();
+
+      for (let key in doc) old_keys.push(key);
+
       const updateResult = collection.updateMany(
         {},
         { $rename: [req.body.query_object] }
       );
-      return res
-        .status(200)
-        .send(JSON.stringify([old_keys, collection.schema.paths]));
+
+      if (updateResult.modifiedCount > 0) {
+        doc = await collection.findOne();
+        for (let key in doc) newKeys.push(key);
+        return res.status(200).send({
+          Success: `Поле с именем <${req.body.query_object}> успешно переименовано`,
+          Collection: `${collection.collectionName}`,
+          NewStructure: newKeys,
+          OldStructure: old_keys,
+        });
+      }
     } catch (err) {
       return Boom.boomify(err, {
         statusCode: 500,
@@ -204,5 +224,138 @@ export class MongoController {
     }
   }
 
- 
+  //crud operations /app/crud
+  async updateCollection(req, res, collection) {
+    if (!req.query.collection)
+      return Boom.boomify(
+        new Error("collection не указан в url в качестве параметра"),
+        { statusCode: 400 }
+      );
+
+    let collection;
+    try {
+      collection = await this.mongoNative
+        .db("rapid_1c_requests")
+        .collection(req.query.collection);
+    } catch (error) {
+      return Boom.boomify(error, { statusCode: 404 });
+    }
+
+    switch (req.body.operation) {
+      case "insert":
+        return await this.crudInsert(req, res, collection);
+      case "update":
+        return await this.crudDelete(req, res, collection);
+      case "delete":
+        return await this.crudUpdate(req, res, collection);
+      default:
+        return Boom.methodNotAllowed(
+          "операция не указана, или указана не верно\n доступные операции insert|delete|update, create_table, delete_table"
+        );
+    }
+  }
+
+  async crudUpdate(req, res, collection) {
+    if (!req.body.changes.fieldsAndValues)
+      return Boom.badRequest("поле(я) для обновления не указаны");
+    try {
+      let updateResult = await collection.updateMany(
+        req.body.filter,
+        fieldsAndValues
+      );
+      if (updateResult.modifiedCount > 0) {
+        return res.status(200).sent({
+          Success: `поля успешно обновлены в таблице ${collection.CollectionName}`,
+          ModifiedCount: updateResult.modifiedCount,
+          MatchCount: updateResult.matchedCount,
+        });
+      } else {
+        return res.status(200).sent({
+          Failure: `данные в таблице ${collection.CollectionName} не были обновлены`,
+        });
+      }
+    } catch (error) {
+      return Boom.boomify(error);
+    }
+  }
+
+  async crudInsert(req, res, collection) {
+    if (!req.body.changes.fieldsAndValues)
+      return Boom.badRequest("поле(я) и значения для добавления не указаны");
+    try {
+      let insertResult = await collection.insert(fieldsAndValues, {
+        ordered: false,
+      });
+      if (insertResult.nInserted > 0) {
+        return res.status(200).sent({
+          Success: `поля успешно добавлены в таблицу ${collection.CollectionName}`,
+          InsertedCount: insertResult.nInserted,
+        });
+      } else {
+        return res.status(200).sent({
+          Failure: `данные не были добавлены в коллекцию ${collection.CollectionName}`,
+        });
+      }
+    } catch (error) {
+      return Boom.boomify(error);
+    }
+  }
+
+  async crudDelete(req, res, collection) {
+    if (!req.body.filter)
+      return Boom.badRequest("условие для удаления не указано");
+    try {
+      let deleteResult = await collection.deleteMany(req.body.filter);
+      if (deleteResult.deleteCount > 0) {
+        return res.status(200).sent({
+          Success: `поля(е) успешно удалены в таблице ${collection.CollectionName}`,
+          DeleteCount: deleteResult.deleteCount,
+        });
+      } else {
+        return res.status(200).sent({
+          Failure: `данные в таблице ${collection.CollectionName} не были удалены`,
+          DeleteCount: deleteResult.deleteCount,
+        });
+      }
+    } catch (error) {
+      return Boom.boomify(error);
+    }
+  }
+
+  //https://docs.mongodb.com/manual/reference/method/db.createCollection/
+  async createTable(req, res, collection) {
+    let newCollection;
+    if (!req.body.table_name)
+      return Boom.badRequest("не указано имя новой таблицы для базы данных");
+    if (req.body.options) {
+      try {
+        newCollection = await this.mongoNative
+          .db("rapid_1c_requests")
+          .createCollection(req.body.table_name, req.body.options);
+      } catch (error) {
+        return Boom.boomify(error);
+      }
+    }
+    newCollection = await this.mongoNative
+      .db("rapid_1c_requests")
+      .createCollection(req.body.table_name);
+    if (newCollection)
+      return res.status(200).send({
+        Success: `таблица ${newCollection.collectionName} была успешно создана`,
+      });
+  }
+
+  async deleteTable(req, res, collection) {
+    if (!req.body.table_to_delete == "users")
+      return Boom.boomify(new Error("na na na nah"), {statusCode: 404});
+    try {
+      let deleteResult = await this.mongoNative
+      .db("rapid_1c_requests")
+      [req.body.table_to_delete].drop();
+      return res.status(200).send({Success: `таблица ${req.body.table_to_delete} успешно удалена`})
+    } catch (error) {
+      return Boom.boomify(error);
+    }
+  }
+  
 }

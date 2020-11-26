@@ -13,3 +13,12 @@ INFO: Unsupported notification method: $/setTraceNotification
 2020.11.24 10:28:36 INFO  time: initialize in 1.43s
 2020.11.24 10:28:36 WARN  Build server is not auto-connectable.
 2020.11.24 10:28:36 WARN  no build tool detected in workspace 'C:\Users\AlexandrA\Desktop\ESB_for_1C-master'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.11.25 19:08:49 INFO  Started: Metals version 0.9.6 in workspace 'C:\Users\AlexandrA\Desktop\ESB_for_1C-master' for client vscode.
+2020.11.25 19:08:50 INFO  time: initialize in 1.79s
+2020.11.25 19:08:55 WARN  Build server is not auto-connectable.
+2020.11.25 19:08:55 WARN  no build tool detected in workspace 'C:\Users\AlexandrA\Desktop\ESB_for_1C-master'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
+2020.11.25 19:30:45 INFO  shutting down Metals
+2020.11.26 09:22:20 INFO  Started: Metals version 0.9.6 in workspace 'C:\Users\AlexandrA\Desktop\ESB_for_1C-master' for client vscode.
+2020.11.26 09:22:25 INFO  time: initialize in 5.16s
+2020.11.26 09:22:27 WARN  Build server is not auto-connectable.
+2020.11.26 09:22:27 WARN  no build tool detected in workspace 'C:\Users\AlexandrA\Desktop\ESB_for_1C-master'. The most common cause for this problem is that the editor was opened in the wrong working directory, for example if you use sbt then the workspace directory should contain build.sbt. 
