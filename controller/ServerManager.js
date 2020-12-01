@@ -1,3 +1,5 @@
+import Boom from "boom";
+
 export class ApiRequestManager {
 
   constructor() {
@@ -9,11 +11,10 @@ export class ApiRequestManager {
   async checkAPIForUp(
     req,
     res,
-    next,
-    retries = 3,
-    backoff = 300,
     link,
-    requestOptions
+    requestOptions,
+    retries = 3,
+    backoff = 300
   ) {
     return fetch(link, requestOptions)
       .then((response) => {
@@ -23,15 +24,11 @@ export class ApiRequestManager {
           }, backoff);
         }
         if (response.ok) {
-          console.log(`API server is up and running`);
-          console.log(response);
-          req.fromApi = response;
-          next();
+          return response;
         }
       })
       .catch((error) => {
-        req.errorFromApi = boom.boomify(error);
-        next();
+        return Boom.boomify(error);
       });
   }
 }

@@ -1,3 +1,4 @@
+
 import { BonusController } from '../controller/BonusController.js';
 import { AuthController } from '../controller/AuthController.js';
 import { MongoController } from '../controller/MongoController.js';
@@ -10,12 +11,24 @@ export function makeRoutes (fastify, options) {
 
     const routes = [
         
-    //1C api mimic    
+    //api methods   
     {
         method: 'GET',
         url: '/app/verify_client',
         preHandler: authController.verifyToken,
         handler: bonusController.verifyClient
+    },
+    {
+        method: 'POST',
+        url: '/app/api_factory',
+        preHandler: authController.verifyToken,
+        handler: bonusController.factoryAPI
+    },
+    {
+        method: 'POST',
+        url: '/app/api_client',
+        preHandler: authController.verifyToken,
+        handler: bonusController.apiClient
     },
 
     //mongodb database methods
@@ -27,7 +40,7 @@ export function makeRoutes (fastify, options) {
     },
     {
         method: 'POST',
-        url: '/app/sync_data',
+        url: '/app/table_factory',
         preHandler: authController.verifyToken,
         handler: mongoController.chageTableProperties
     },
@@ -36,6 +49,12 @@ export function makeRoutes (fastify, options) {
         url: '/app/crud',
         preHandler: authController.verifyToken,
         handler: mongoController.updateCollection
+    },
+    {
+        method: 'POST',
+        url: '/app/delete_table',
+        preHandler: authController.verifyToken,
+        handler: mongoController.deleteTable
     },
     //Auth methods
     {
