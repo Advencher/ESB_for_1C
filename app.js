@@ -22,9 +22,6 @@ app.addContentTypeParser('application/jsoff', function (request, payload, done) 
   })
 })
 
-
-
-
 async function build () {
   await app.register(middie)
   await app.register(fastifyFormbody)

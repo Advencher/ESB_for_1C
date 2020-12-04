@@ -32,7 +32,7 @@ export class MongoController {
       case "update_property":
         return await this.updateKey(req, res, collection);
       case "create_table":
-        return await this.createTable(req, res, collection);
+        return await this.createTable(req, res, req.query.collection);
       default:
         return Boom.methodNotAllowed(
           "операция не указана, или указана не верно\n доступные операции add|delete|update_property, create_table, delete table"
@@ -283,16 +283,16 @@ export class MongoController {
     if (!req.body.changes.fieldsAndValues)
       return Boom.badRequest("поле(я) и значения для добавления не указаны");
     try {
-      let insertResult = await collection.insert(fieldsAndValues, {
+      let insertResult = await collection.insert(req.body.changes.fieldsAndValues, {
         ordered: false
       });
-      if (insertResult.nInserted > 0) {
-        return res.status(200).sent({
-          Success: `поля успешно добавлены в таблицу ${collection.CollectionName}`,
-          InsertedCount: insertResult.nInserted,
+      if (insertResult.insertedCount > 0) {
+        return res.status(200).send({
+          Success: `поля успешно добавлены в таблицу ${collection.collectionName}`,
+          InsertedCount: insertResult.insertedCount,
         });
       } else {
-        return res.status(200).sent({
+        return res.status(200).send({
           Failure: `данные не были добавлены в коллекцию ${collection.CollectionName}`,
         });
       }
@@ -323,28 +323,31 @@ export class MongoController {
   }
 
   //https://docs.mongodb.com/manual/reference/method/db.createCollection/
-  async createTable(req, res, collection) {
+  async createTable(req, res, collection_name) {
     let newCollection;
-    if (!req.body.collection)
+    if (!collection_name)
       return Boom.badRequest("не указано имя новой таблицы для базы данных");
     if (req.body.options) {
       try {
         newCollection = await this.mongoNative
           .db("rapid_1c_requests")
-          .createCollection(req.body.collection, {validator: req.body.options.response_structure});
+          .createCollection(collection_name, {validator: req.body.options.response_structure});
       } catch (error) {
         return Boom.boomify(error);
       }
-    }
-    newCollection = await this.mongoNative
+    } else {
+      newCollection = await this.mongoNative
       .db("rapid_1c_requests")
-      .createCollection(req.body.collection);
+      .createCollection(collection_name);
+     }
+    
     if (newCollection)
       return res.status(200).send({
         Success: `таблица ${newCollection.collectionName} была успешно создана`,
       });
   }
-
+  
+  //method works 100%
   async deleteTable(req, res, collection) {
     if (!req.body.table_to_delete) return Boom.boomify(new Error("недостаточно параметров"), {statusCode:400});
     if (req.body.table_to_delete === "users")
@@ -353,7 +356,7 @@ export class MongoController {
       let deleteResult = await this.mongoNative.db("rapid_1c_requests").collection(req.body.table_to_delete).drop();
       return res.status(200).send({Success: `таблица ${req.body.table_to_delete} успешно удалена`})
     } catch (error) {
-      return Boom.boomify(new Error("Коллекции не существует"), {statusCode:500});
+      return Boom.boomify(new Error(`Коллекции ${req.body.table_to_delete} не существует вбазе данных`), {statusCode:500});
     }
   }
   

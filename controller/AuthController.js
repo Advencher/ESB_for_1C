@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import config from "../config/security_config.js";
 import User from "../models/User.js";
+import Boom from "boom";
 
 export class AuthController {
   constructor() {}
@@ -53,23 +54,24 @@ export class AuthController {
   }
 
   async signIn(req, res, next) {
-    await User.findOne({ name: req.body.name }, function (err, user) {
-      if (err) return res.status(500).send("Ошибка на сервере.");
+    try {
+      let user = await User.findOne({ name: req.body.name });
       if (!user) return res.status(404).send("Пользователя не существует.");
-
       let passwordIsValid = bcrypt.compareSync(
-        req.body.password,
-        user.password
+          req.body.password,
+          user.password
       );
       if (!passwordIsValid)
-        return res.status(401).send({ auth: false, token: null });
-
+          return res.status(401).send({ auth: false, token: null });
       let token = jwt.sign({ id: user._id }, config.secret, {
-        expiresIn: 86400,
+          expiresIn: 86400,
       });
-
-      res.status(200).send({ auth: true, token: token });
-    });
+      return res.status(200).send({ auth: true, token: token });
+  
+    } catch (error) {
+      return Boom.boomify(error);
+    }
+   
   }
 
   checkDuplecateUserName(req, res, next) {

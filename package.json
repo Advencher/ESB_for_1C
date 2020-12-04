@@ -37,7 +37,8 @@
     "middie": "^5.2.0",
     "mongod": "^2.0.0",
     "mongoose": "^5.10.12",
-    "node-fetch": "^2.6.1"
+    "node-fetch": "^2.6.1",
+    "node-fetch-retry": "^1.1.1"
   },
   "type": "module"
 }

@@ -6,7 +6,7 @@ import { MongoController } from '../controller/MongoController.js';
 export function makeRoutes (fastify, options) {
 
     let authController = new AuthController();
-    let bonusController = new BonusController(fastify.mongo);
+    let bonusController = new BonusController(fastify.mongoNative);
     let mongoController = new MongoController(fastify.mongoNative);
 
     const routes = [
@@ -29,6 +29,12 @@ export function makeRoutes (fastify, options) {
         url: '/app/api_client',
         preHandler: authController.verifyToken,
         handler: bonusController.apiClient
+    },
+    {
+        method: 'POST',
+        url: '/app/api_insert',
+        preHandler: authController.verifyToken,
+        handler: bonusController.insertApi
     },
 
     //mongodb database methods

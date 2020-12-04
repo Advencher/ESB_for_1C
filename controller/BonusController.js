@@ -11,32 +11,33 @@ const MAIN_DATABASE_URL =
 global.Headers = fetch.Headers;
 
 export class BonusController {
-  constructor(mongo) {
+  constructor(mongoNative) {
     this.retryCodes = [408, 500, 502, 503, 504, 522, 524];
     this.apiRequestManager = new ApiRequestManager();
     this.myHeaders = new Headers();
     this.myHeaders.append("Authorization", "Basic dHJhY2s6NTZxdHA3");
-    this.mongo = mongo;
+    this.mongoNative = mongoNative;
+    this.factoryAPI = this.factoryAPI.bind(this);
+    this.apiClient = this.apiClient.bind(this);
     this.requestOptions = {
       method: "GET",
       headers: this.myHeaders,
-      redirect: "follow"
+      redirect: "follow",
     };
     this.verifyClient = this.verifyClient.bind(this);
     this.tokenOptions = {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: {
-        name: 'retard',
-        password: 'testpassword'
-      }
+      body: new URLSearchParams({
+        name: "retard",
+        password: "testpassword",
+      }),
     };
-
   }
 
-  //рекурсивная проверка статуса сервераs
+  //рекурсивная проверка статуса сервера
   async checkClientVerification(req, res, retries = 3, backoff = 300) {
     return fetch(
       `${API_1C_BONUS_CLIENT_URL}getclient?phone=${req.query.phone}&barcode=${req.query.barcode}`,
@@ -79,9 +80,8 @@ export class BonusController {
     } else return clientVerificationData;
   }
 
-  //поиск записи в таблице клиента mongodb (асинхронно)
+  //поиск записи в таблице клиента mongodb
   async verifyClientInMongo(req) {
-    
     const findClient = clients
       .findOne(
         {
@@ -96,90 +96,95 @@ export class BonusController {
       });
   }
 
-  //регистрация API
-  async factoryAPI (req, res) {
+  //регистрация API works 100%
+  async factoryAPI(req, res) {
     //если есть параметер с коллекцией
-    if (req.body.collection)
-    {
-   
-      //если такая коллекия еще есть 
-      console.log( await this.mongoNative.db('reapid_1c_requests').listCollections().toArray());
-      return;
-      if (await this.mongoNative.db('reapid_1c_requests').listCollections().includes(req.body.collection)) {
-        return res.status(200).send({message: "такой API уже подключен"});
+    if (req.body.collection) {
+      const token = req.headers["x-access-token"];
+      const urlInsertApi = "http://localhost:3000/app/crud?collection=apies";
+      let checkForName = await this.mongoNative
+        .db("rapid_1c_requests")
+        .listCollections({ name: req.body.collection })
+        .toArray();
+      let _fieldsAndValues;
+      let response_structure = req.body.apiStructure.response_structure;
+
+      //если такая коллекия уже есть
+      if (checkForName.length != 0) {
+        return res.status(200).send({ message: "такой API уже подключен" });
       }
-
-     let _fieldsAndValues;
-
-      try  {
-       _fieldsAndValues = {
+      try {
+        _fieldsAndValues = {
           api_url: req.body.apiStructure.api_url,
           method: req.body.apiStructure.method,
           collection: req.body.collection,
           headers: req.body.apiStructure.headers,
           bodyparams: req.body.apiStructure.bodyparams,
           urlparams: req.body.apiStructure.urlparams,
-          response_structure: req.body.apiStructure.response_structure
-        }
+        };
       } catch (error) {
         return Boom.boomify(error);
       }
+      const createApiReserve = `http://localhost:3000/app/table_factory?collection=${req.body.collection}`;
 
-      //как получить своего хоста
-      const urlToken = 'localhost:3000/auth/login';
-      const urlInsertApi = 'localhost:3000/app/crud?collection=apis';
-      const createApiReserve = `localhost:3000/app/table_factory?collection=${api_url}`;
-      //получаем токен
-      let tokenReq = await fetch(urlToken, this.tokenOptions);
-
-      
-      
       let insertRequestOptions = {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'x-access-token': tokenReq.token
+          "Content-Type": "application/json",
+          "x-access-token": token,
         },
-        body: {
-          changes: {fieldsAndValues: _fieldsAndValues} 
-        }
+        body: JSON.stringify({
+          changes: { fieldsAndValues: _fieldsAndValues },
+          operation: "insert",
+        }),
       };
 
       let optionsCreateTable = {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'x-access-token': tokenReq.token
+          "Content-Type": "application/json",
+          "x-access-token": token,
         },
-        body: {
-          options:  _response_structure,
-          operation: "create_table"
-        }
-      }
+        body: JSON.stringify({
+          options: response_structure,
+          operation: "create_table",
+        }),
+      };
 
       let makeApiTable = await fetch(createApiReserve, optionsCreateTable);
-      if (makeApiTable.Success) {
+
+      let resultMakeTable = await makeApiTable.json();
+      if (resultMakeTable.Success) {
         let insertApiRes = await fetch(urlInsertApi, insertRequestOptions);
-        return res.status(200).send({...makeApiTable, ...insertApiRes, Success: `API для 1C c относительным URL </${_fieldsAndValues.api_url}> зарегестрирован`})
-      }
-      if (makeApiTable.status === 400) {
-        return makeApiTable;
+        insertApiRes = await insertApiRes.json();
+        if (insertApiRes.Success) {
+          return res.status(200).send({
+            apiTableName: `имя таблицы в бд и имя API для передачи в запрос - ${req.body.collection}`,
+            Success: `API для 1C c относительным URL </${_fieldsAndValues.api_url}> зарегестрирован`,
+            ..._fieldsAndValues,
+          });
+        } else {
+          return res.status(500).send({
+            apiRegistrationResult: insertApiRes,
+            message: `ошибка при регистрации API (insert в таблицу apies завершился с ошибкой) ${req.body.collection}, удалите таблицу с соответствующим именем`,
+          });
+        }
+      } else {
+        return Boom.boomify(makeApiTable, {
+          message: "при регистрации API возникала ошибка",
+        });
       }
     }
   }
 
-  async apiClient (req, res) {
+  async apiClient(req, res) {
     if (!req.query.api_name) return Boom.badRequest("укажите api_name");
-
-    let apiProvider = await this.mongo
-      .db("reapid_1c_requests")
+    let apiProvider = await this.mongoNative
+      .db("rapid_1c_requests")
       .collection("apies")
-      .find({ api_url: api_name });
-
-    // проверки url и body запросов
+      .findOne({ collection: req.query.api_name });
     try {
-      //проверка на целостность данных body к запросу
-      if (req.body.bodyparams !== "") {
+      if (req.body.bodyparams) {
         let counterKey = 0;
         for (let key in req.body.bodyparams) {
           counterKey++;
@@ -194,12 +199,11 @@ export class BonusController {
             Failure: `количество предоставленных ключей для BODY запроса - ${req.query.api_name} не совпадает с зарегестрированным количеством`,
           });
       }
-
-      //проверка на целостность данных url к запросу
-      if (req.body.urlparams !== "") {
+      if (req.body.urlparams) {
         let counterKey = 0;
-        for (let key of req.body.urlparams) {
+        for (let key in req.body.urlparams) {
           counterKey++;
+
           if (!apiProvider.urlparams.includes(key))
             return res.status(200).send({
               Failure: `ключ <${key}> не найден для URL - ${req.query.api_name} не совпадает с зарегистрированным ключом`,
@@ -214,54 +218,169 @@ export class BonusController {
     } catch (error) {
       return Boom.boomify(error);
     }
-
-    //формирование запроса
     let requestOptions = {
       method: apiProvider.method, //метод POST, GET, ...
-      headers: this.myHeaders, //авторзация в API
+      headers: apiProvider.headers, //авторзация в API
       redirect: "follow", //редирект
-      body: req.body,
+      body: JSON.stringify(req.body.bodyparams),
     };
 
-    //формирование ссылки на запрос
     let urlAPI = `${apiProvider.api_url}`;
-    if (req.body.url_param_values) {
+    if (req.body.urlparams) {
       let index = 0;
-      urlAPI = `${apiProvider.api_url}?`;
+      urlAPI += `?`;
       for (let param of apiProvider.urlparams) {
-        urlAPI += `${param}=${req.body.urlparams[index]}`;
+        urlAPI += `${param}=${req.body.urlparams[param]}`;
         index++;
+
+        if (index !== apiProvider.urlparams.length) urlAPI += `&`;
       }
     }
-
-    console.log(urlAPI);
-
     try {
-      let requestApi = await this.apiRequestManager(
-        req,
-        res,
+      let requestApi = await this.apiRequestManager.checkAPIForUp(
         urlAPI,
         requestOptions
       );
-      if (requestApi.Error) {
-        return this.searchInMongoDB(req, res);
-      }
-      let apiReserve = await this.mongo
-        .db("reapid_1c_requests")
+      let apiReserve = await this.mongoNative
+        .db("rapid_1c_requests")
         .collection(apiProvider.collection);
-      let insertToApiReserve = await apiReserve.insert(JSON.parse(requestApi));
+      let memento = {};
+      if (req.body.bodyparams) memento.bodyparams = req.body.bodyparams;
+      if (req.body.urlparams) memento.urlparams = req.body.urlparams;
 
-      if (insertToApiReserve.nInserted > 0) {
-        return res.status(200).send(requestApi);
+      if (requestApi.serverError) {
+        let searchForLatestEntry;
+        searchForLatestEntry = await apiReserve.findOne(
+          { memento: memento },
+          { _id: 0, sort: { $natural: -1 }, limit: 1 }
+        );
+        if (searchForLatestEntry) {
+          return JSON.stringify({ ...searchForLatestEntry, ...requestApi });
+        } else {
+          return JSON.stringify({
+            Error: `1C не доступна и в базе отсутcтвуют актуальные данные `,
+            apiName: apiProvider.collection,
+            usedURL: urlAPI,
+            ...requestApi,
+          });
+        }
+      }
+      if (requestApi.myFlag) {
+        delete requestApi.myFlag;
+        let combinedEntry = { ...requestApi, memento: memento };
+        let insertToApiReserve = await apiReserve.findOneAndReplace(
+          { memento: combinedEntry.memento },
+          combinedEntry,
+          { upsert: true }
+        );
+        if (insertToApiReserve.ok) {
+          return res
+            .status(200)
+            .send(JSON.stringify({ ...requestApi, memento: memento }));
+        }
       }
     } catch (error) {
       return Boom.boomify(error);
     }
   }
 
+  //api для синхронизации c 1C
+  async insertApi(req, res) {
+    if (!req.query.api_name)
+      return Boom.badRequest("укажите название API в api_name");
+    let apiProvider = await this.mongoNative
+      .db("rapid_1c_requests")
+      .collection("apies")
+      .findOne({ collection: req.query.api_name });
 
+    let insertRequestOptions = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-access-token": token,
+      },
+      body: JSON.stringify({
+        changes: { fieldsAndValues: req.body.data },
+        operation: "insert",
+      }),
+    };
 
+    //формирование запроса
+    let requestOptions = {
+      method: apiProvider.method, //метод POST, GET, ...
+      headers: apiProvider.headers, //авторзация в API
+      redirect: "follow", //редирект
+      body: JSON.stringify(req.body.bodyparams),
+    };
+    //формирование ссылки на запрос
+    let urlAPI = `${apiProvider.api_url}`;
+    if (req.body.urlparams) {
+      let index = 0;
+      urlAPI += `?`;
+      for (let param of apiProvider.urlparams) {
+        urlAPI += `${param}=${req.body.urlparams[param]}`;
+        index++;
 
+        if (index !== apiProvider.urlparams.length) urlAPI += `&`;
+      }
+    }
 
+    let requestApi = await this.apiRequestManager.checkAPIForUp(
+      urlAPI,
+      requestOptions
+    );
+
+    if (requestApi.serverError) {
+      //search in mongoDB
+      //TO DO: test function
+      return JSON.stringify({
+        Error: `1C API с url ${apiProvider.api_url} не доступен (1С сервер не работает)`,
+        api_name: apiProvider.collection,
+        apiURL: apiProvider.api_url,
+      });
+    }
+
+    if (requestApi.myFlag) {
+      switch (req.body.operation) {
+        case "update":
+          //UPSERT
+          if (!req.body.update_filter)
+            return res.status(200).send(
+              JSON.stringify({
+                Failure: `не указан фильтр для update https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/`
+              })
+            );
+            
+          //default false
+          let upsertValue = (req.body.upsert) ? true: false;
+          let updateToApiReserve = await apiReserve.updateMany(req.body.update_filter, requestApi, {upsert: upsertValue });
+          if (updateToApiReserve.insertedCount > 0) {
+            return res.status(200).send(
+              JSON.stringify({
+                Success: `успешно ОБНОВЛЕНЫ записи в количестве ${updateToApiReserve.modifiedCount}`,
+                matchedCount: updateToApiReserve.matchedCount,
+                apiName: apiProvider.collection,
+                apiURL: apiProvider.api_url,
+              })
+            );
+          }
+          break;
+
+        default:
+          //insert all data
+          let insertToApiReserve = await apiReserve.insert(requestApi);
+          if (insertToApiReserve.insertedCount > 0) {
+            return res.status(200).send(
+              JSON.stringify({
+                Success: `успешно ДОБАВЛЕНЫ новые записи в количестве ${insertToApiReserve.insertedCount}`,
+                apiName: apiProvider.collection,
+                apiURL: apiProvider.api_url,
+              })
+            );
+          }
+          break;
+      }
+    }
+  }
 }
 
