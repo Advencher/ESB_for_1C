@@ -6,8 +6,13 @@
 2. https://nodejs.org/en/download/ - node.js
 3. https://docs.mongodb.com/manual/tutorial/install-mongodb-on-windows/  - mongoDB noSQL
 
-если проект пишет, что не хватает какого-то пакета, то необходимо скачать **npm **
-и выполнить команду `npm install --save`, обычно npm устанавливается сразу с node.js
+
+### запуск приложения 
+
+- настроить IP и PORT в ./config/server_config 
+- для запуска приложения перейти в директорию с проектом  в терминале и вызвать `node app.js`
+- если проект пишет, что не хватает какого-то пакета, то необходимо скачать **npm **
+и выполнить команду `npm install --save` (для подкачки зависимостей), обычно npm устанавливается сразу с node.js
 
 ### запуск базы данных
 после установки mongodb, необходимо запустить сервис
@@ -19,11 +24,7 @@
 и использовать команды:
 - `use rapid_1c_requests` - выбор БД (возможно придется создать её вручную для вызова списка комманд `help` )
 - `db.createCollection("users")` - создание коллекции users
-- `db.createCollection("apies") `- создание коллекции apies
-
-### запуск приложения 
-
-для запуска приложения перейти в директорию с проектом  в терминале и вызвать `node app.js`
+- `db.createCollection("apies") `- создание коллекции apies (так же это можно сделать и через запросы по сети, но проще так)
 
 
 ## Запросы авторизации
@@ -33,7 +34,7 @@
 ### регистрация в приложении
 
     
-
+```javascript
     var settings = {
       "url": "localhost:3000/auth/register",
       "method": "POST",
@@ -47,21 +48,21 @@
         "codeword": "coffeine"
       }
     };
+```
 
 Добавит логин и хеш пароля в коллекцию users, вернет токен на 24 часа (секретное слово для доступа к регистрации)
 
-
+```javascript
     `{
         "auth": true,
         "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVmY2UwOGJlZjYxZTU5M2I4MDFkZDc4MiIsImlhdCI6MTYwNzMzODE3NSwiZXhwIjoxNjA3NDI0NTc1fQ.BFGo0PcMHq1U8rVR8ZxVlqvAWbJjsUr24eUkyYbXlNA"
     }`
-    
+```
 
 
 ### запросы для авторизации  jwt токен
 
-
-
+```javascript
     var settings = {
       "url": "localhost:3000/auth/login",
       "method": "POST",
@@ -74,6 +75,8 @@
         "password": "testpassword"
       }
     };
+```
+
 Так же возвращает токен для дальнейших запросов на 24 часа
 
 ## Контроль API в приложении 
@@ -88,6 +91,7 @@
 - `apiStructure.urlparams` - указать что будет передаваться в URL в виде массива  [ 'bar', 'foo', ... ] (необходимо заранее указать названия для параметров)
 - `apiStructure.response_structure` - указать какие поля будут пристствовать в таблице для хранения результатов запросов в API (не обязательно, пока я не включал строгой проверки на поля)
 
+```javascript
       var settings = {
           "url": "localhost:3000/app/api_factory",
           "method": "POST",
@@ -124,11 +128,11 @@
           } 
       }
     };
-
+```
 ### запрос на использование API
 
 Необходимо указать имя API в URL параметре - `api_name=client_cards` для использования заготовленного запроса в body передать все необходимые параметры в `urlparams` и `bodyparams` в формате JSON
-
+```javascript
     var settings = {
       "url": "localhost:3000/app/api_client?api_name=client_cards",
       "method": "POST",
@@ -146,7 +150,7 @@
 	  	}
 	  },
     };
-	
+```
 Ответ сохраняет все поля исходного API, но при этом добавляет поле `memento` как идентификатор последнего удачного запроса к 1С серверу, если запрос будет выполнен с такими же параметрами, то результат запроса заменит эту запись в БД - эти результаты храняться в таблице с наванием API указанным при регистрации в modgoDB
 ```javascript
 {"Code1C":"КУ0004334",
@@ -160,6 +164,7 @@
 Так как можно зарегистрировать любой запрос в функционале с регистрацией, то для выгрузки большого количества данных используется следующий запрос 
 еслт надо обновить данные, то можно указать параметр operation и update_filter в body запроса
 
+```javascript
     var settings = {
       "url": "localhost:3000/app/api_insert?api_name=client_cards",
       "method": "POST",
@@ -172,10 +177,63 @@
 	  "operation": "update" //указать если надо обновить данные 
 	  
     };
-    
-    
+```
+или, для запроса на забор данных с какого либо ресурса (просто указать api_name):
+
+```javascript
+    var settings = {
+      "url": "localhost:3000/app/api_insert?api_name=client_cards",
+      "method": "POST",
+      "timeout": 0,
+      "headers": {
+        "x-access-token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVmYjM2YzJhNjFiNDBhMTc4YzRiNTAxZCIsImlhdCI6MTYwNzA3MzgwNiwiZXhwIjoxNjA3MTYwMjA2fQ.eBr81bVLXeZ1fV0CM9YIaDN4WV3cNIGDjFIPXV6_1sc",
+        "Content-Type": "application/json"
+      }
+    };
+```
 
 
+## Чтение данных из таблиц
+
+### основнай запрос на получение данных из таблиц
+
+Так же в запросе в body можно указать следующие параметры:
+
+- `"projection": { name: 1, _id:0}` - показывает какие параметры вывести   
+- `"select': { name: "Bob" }`  - фильтр, выбирает записи с именем боб  
+
+документация по методу (что такое projection и filter) -
+
+https://docs.mongodb.com/manual/reference/method/db.collection.find/
+
+```javascript
+var settings = {
+  "url": "localhost:3000/app/query_data?collection=client_cards",
+  "method": "GET",
+  "timeout": 0,
+  "headers": {
+    "x-access-token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVmYjM2YzJhNjFiNDBhMTc4YzRiNTAxZCIsImlhdCI6MTYwNzMzNzAxOCwiZXhwIjoxNjA3NDIzNDE4fQ.79U1dT6k_SbnwS6ru5OGs92774DCOE7WcbnQ2XVfji8"
+  },
+};
+```
+Пример ответа (параметров не было указано, поэтому вернулись все данные из коллекции `client_cards` в виде JSON массива):
+
+```javascript
+[
+    {
+        "_id": "5fc9e63f3ec29f2a7622399a",
+        "Code1C": "КУ0004334",
+        "Name": "Додонова Галина Васильевна",
+        "Success": true,
+        "memento": {
+            "urlparams": {
+                "phone": "(953) 040-44-04",
+                "barcode": "7000000690228"
+            }
+        }
+    }
+]
+```
 
 ### запросы для управления ключами коллекции (или таблицы) в mongodb
 
@@ -186,9 +244,6 @@
 1. collection передается в URL - это имя таблицы поле которой будут изменены
 2. remove_key - указывается в body запроса, соответствует полю которое пользователь хочет удалить
 3. operation указывается в body запроса с одним из следующих значений remove_propery, update_propery, delete_propery, read_keys - название операции соответствует её действию со свойтвом таблицы - то есть удаление, переименование, удаление, чтение свойства таблицы
-
-
-
 
 
 #### пример формирования запроса JS на удаление поля из таблицы users
@@ -209,7 +264,8 @@
       }
     };
 ```
-#### ответ от сервера
+Ответ от сервера
+
 - NewStructure - новая структура после удаления ключа из всех записей (id и v являются частью mongodb, их можно игнорировать)
 - Свойства DocumentChanged и MatchCount должны совпадать для сохранения целостности данных, но если вам необходимо хранить записи с разными структурами в одной коллекции, то можно это игнорировать
 

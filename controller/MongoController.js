@@ -74,9 +74,9 @@ export class MongoController {
 
     try {
       const queryResult = await collection.find(query, projection).toArray();
-      return res.status(200).send(doc);
+      return res.status(200).send(queryResult);
     } catch (error) {
-      return Boom.boomify(err, {
+      return Boom.boomify(error, {
         message: "ошибка во время запроса (╯°□°）╯︵ ┻━┻",
       });
     }
