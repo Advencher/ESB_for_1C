@@ -2,7 +2,7 @@ import boom from "boom";
 import fetch from "node-fetch";
 import Boom from "boom";
 import {ApiRequestManager} from "./ServerManager.js"
-
+import nconf from "nconf";
 
 const API_1C_BONUS_CLIENT_URL = "http://62.168.226.38:7599/testbd/hs/bonus/";
 const MAIN_DATABASE_URL =
@@ -35,8 +35,18 @@ export class BonusController {
         password: "testpassword",
       }),
     };
-  }
+    nconf.argv().env();
+    nconf.file({ file: './config/server_config.json' });
+    nconf.defaults({
+        'http': {
+          'serverAddress': 'localhost',
+          'serverPort': 3000
+        }
+    });
+    this.nconf = nconf;
 
+
+  }
   //рекурсивная проверка статуса сервера
   async checkClientVerification(req, res, retries = 3, backoff = 300) {
     return fetch(
@@ -101,7 +111,7 @@ export class BonusController {
     //если есть параметер с коллекцией
     if (req.body.collection) {
       const token = req.headers["x-access-token"];
-      const urlInsertApi = "http://localhost:3000/app/crud?collection=apies";
+      const urlInsertApi = `http://${this.nconf.get('http:serverAddress')}:${this.nconf.get('http:serverPort')}/app/crud?collection=apies`;
       let checkForName = await this.mongoNative
         .db("rapid_1c_requests")
         .listCollections({ name: req.body.collection })
@@ -125,7 +135,7 @@ export class BonusController {
       } catch (error) {
         return Boom.boomify(error);
       }
-      const createApiReserve = `http://localhost:3000/app/table_factory?collection=${req.body.collection}`;
+      const createApiReserve = `http://${this.nconf.get('http:serverAddress')}:${this.nconf.get('http:serverPort')}/app/table_factory?collection=${req.body.collection}`;
 
       let insertRequestOptions = {
         method: "POST",

@@ -1,0 +1,6 @@
+{
+    "http": {
+    "serverAddress": "localhost",
+    "serverPort": 3000
+    }
+}

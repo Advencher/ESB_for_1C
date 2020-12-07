@@ -3,10 +3,20 @@ import {makeRoutes} from './route/bonusRoutes.js';
 import fastifyPlugin from 'fastify-plugin';
 import fastifyFormbody from 'fastify-formbody';
 import middie from 'middie';
-import {dbConnector} from './config/db.js'; 
+import {dbConnector} from './config/db.js';
+import nconf from "nconf";
 
+nconf.argv().env();
 
-const PORT = process.env.PORT || 3000;
+nconf.file({ file: './config/server_config.json' });
+
+nconf.defaults({
+    'http': {
+      'serverAddress': 'localhost',
+      'serverPort': 3000
+    }
+});
+
 
 let app = fastify();
 app.get("/", async () => {
@@ -33,5 +43,5 @@ async function build () {
 
 build()
   .then(app => makeRoutes(app))
-  .then(app => {app.listen(3000)})
-  .catch(console.log)
+  .then(app => {app.listen(nconf.get('http:serverPort'), nconf.get('http:serverAddress'))})
+  .catch(error => {console.log(error)} )

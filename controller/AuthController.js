@@ -101,7 +101,9 @@ export class AuthController {
       return;
     }
 
-    bcrypt.compare(config.codeword, req.body.codeword, (err, result) => {
+
+
+    bcrypt.compare(req.body.codeword, config.codeword, (err, result) => {
       if (err) {
         res.status(500).send({ message: err });
         return;
