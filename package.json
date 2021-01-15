@@ -1,9 +1,10 @@
 {
   "name": "project",
   "version": "1.0.0",
-  "description": "LETS FUCKING GOOOO",
-  "main": "index.js",
+  "description": "1C ESB",
+  "main": "entryCli.js",
   "scripts": {
+    "start": "node app",
     "test": "nom run test"
   },
   "repository": {
@@ -20,6 +21,9 @@
   "bugs": {
     "url": "https://github.com/Advencher/amazing/issues"
   },
+  "engines": {
+    "node": "14.15.0"
+  },
   "homepage": "https://github.com/Advencher/amazing#readme",
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -29,6 +33,7 @@
     "express": "^4.17.1",
     "fastify": "^3.7.0",
     "fastify-formbody": "^5.0.0",
+    "fastify-helmet": "^5.1.0",
     "fastify-mongodb": "^2.0.1",
     "fastify-plugin": "^3.0.0",
     "fetch": "^1.1.0",

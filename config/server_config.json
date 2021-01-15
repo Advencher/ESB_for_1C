@@ -2,5 +2,21 @@
     "http": {
     "serverAddress": "localhost",
     "serverPort": 3000
-    }
+    },
+
+    "api_access_auth": {
+        "headerName": "Authorization",
+        "creds": "Basic dHJhY2s6NTZxdHA3"
+    },
+
+    "1C": {
+        "api_url": "http://62.168.226.38:7599/testbd/hs/bonus/"
+    },
+    
+     "mongo" : {"MONGO_USERNAME" : "mongoadmin",
+                "MONGO_PASSWORD" : "whereismyboner",
+                "MONGO_HOSTNAME" : "localhost",
+                "MONGO_PORT" : "27017",
+                "MONGO_DB" : "rapid_1c_requests" }
+
 }

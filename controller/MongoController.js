@@ -283,9 +283,12 @@ export class MongoController {
     if (!req.body.changes.fieldsAndValues)
       return Boom.badRequest("поле(я) и значения для добавления не указаны");
     try {
-      let insertResult = await collection.insert(req.body.changes.fieldsAndValues, {
-        ordered: false
-      });
+      let insertResult = await collection.insert(
+        req.body.changes.fieldsAndValues,
+        {
+          ordered: false,
+        }
+      );
       if (insertResult.insertedCount > 0) {
         return res.status(200).send({
           Success: `поля успешно добавлены в таблицу ${collection.collectionName}`,
@@ -331,34 +334,51 @@ export class MongoController {
       try {
         newCollection = await this.mongoNative
           .db("rapid_1c_requests")
-          .createCollection(collection_name, {validator: req.body.options.response_structure});
+          .createCollection(collection_name, {
+            validator: req.body.options.response_structure,
+          });
       } catch (error) {
         return Boom.boomify(error);
       }
     } else {
       newCollection = await this.mongoNative
-      .db("rapid_1c_requests")
-      .createCollection(collection_name);
-     }
-    
+        .db("rapid_1c_requests")
+        .createCollection(collection_name);
+    }
+
     if (newCollection)
       return res.status(200).send({
         Success: `таблица ${newCollection.collectionName} была успешно создана`,
       });
   }
-  
+
   //method works 100%
   async deleteTable(req, res, collection) {
-    if (!req.body.table_to_delete) return Boom.boomify(new Error("недостаточно параметров"), {statusCode:400});
+    if (!req.body.table_to_delete)
+      return Boom.boomify(new Error("недостаточно параметров"), {
+        statusCode: 400,
+      });
     if (req.body.table_to_delete === "users")
-      return Boom.boomify(new Error("naaaah удалять юзеров нельзя"), {statusCode:404});
+      return Boom.boomify(new Error("naaaah удалять юзеров нельзя"), {
+        statusCode: 404,
+      });
     try {
-      let deleteResult = await this.mongoNative.db("rapid_1c_requests").collection(req.body.table_to_delete).drop();
-      return res.status(200).send({Success: `таблица ${req.body.table_to_delete} успешно удалена`})
+      let deleteResult = await this.mongoNative
+        .db("rapid_1c_requests")
+        .collection(req.body.table_to_delete)
+        .drop();
+      return res
+        .status(200)
+        .send({
+          Success: `таблица ${req.body.table_to_delete} успешно удалена`,
+        });
     } catch (error) {
-      return Boom.boomify(new Error(`Коллекции ${req.body.table_to_delete} не существует вбазе данных`), {statusCode:500});
+      return Boom.boomify(
+        new Error(
+          `Коллекции ${req.body.table_to_delete} не существует вбазе данных`
+        ),
+        { statusCode: 500 }
+      );
     }
   }
-  
 }
-

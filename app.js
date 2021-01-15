@@ -1,47 +1,68 @@
-import fastify from 'fastify';
-import {makeRoutes} from './route/bonusRoutes.js';
-import fastifyPlugin from 'fastify-plugin';
-import fastifyFormbody from 'fastify-formbody';
-import middie from 'middie';
-import {dbConnector} from './config/db.js';
+import fastify from "fastify";
+import fastifyPlugin from "fastify-plugin";
+import fastifyFormbody from "fastify-formbody";
+import middie from "middie";
 import nconf from "nconf";
+import helmet from "fastify-helmet";
+import { dbConnector } from "./config/db.js";
+import { makeRoutes } from "./route/bonusRoutes.js";
 
-nconf.argv().env();
+class ApplicationESB {
+  constructor(input, flags) {
+    this.flags = flags;
+    this.input = input;
+  }
 
-nconf.file({ file: './config/server_config.json' });
+  startServer() {
+    let app = fastify();
+    app.get("/", async () => {
+      return {
+        Message: "Welcome to 1С ESB",
+      };
+    });
 
-nconf.defaults({
-    'http': {
-      'serverAddress': 'localhost',
-      'serverPort': 3000
+    app.addContentTypeParser(
+      "application/jsoff",
+      function (request, payload, done) {
+        jsoffParser(payload, function (err, body) {
+          done(err, body);
+        });
+      }
+    );
+
+    async function build() {
+      await app.register(middie);
+      await app.register(fastifyFormbody);
+      await app.register(fastifyPlugin(dbConnector));
+      await app.register(helmet, { contentSecurityPolicy: false });
+      return app;
     }
-});
 
+    build()
+      .then((app) => makeRoutes(app))
+      .then((app) => {
+        app.listen(
+          nconf.get("http:serverPort"),
+          nconf.get("http:serverAddress")
+        );
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
 
-let app = fastify();
-app.get("/", async () => {
-    return {
-      Message: "Welcome to 1С API middleware"
-    }
-});
-
-
-app.addContentTypeParser('application/jsoff', function (request, payload, done) {
-  jsoffParser(payload, function (err, body) {
-    done(err, body)
-  })
-})
-
-async function build () {
-  await app.register(middie)
-  await app.register(fastifyFormbody)
-  await app.register(fastifyPlugin(dbConnector))
-  return app
+  configInit() {
+    nconf.argv().env();
+    nconf.file({ file: "./config/server_config.json" });
+    nconf.defaults({
+      http: {
+        serverAddress: "localhost",
+        serverPort: 3000,
+      },
+    });
+  }
 }
 
-
-
-build()
-  .then(app => makeRoutes(app))
-  .then(app => {app.listen(nconf.get('http:serverPort'), nconf.get('http:serverAddress'))})
-  .catch(error => {console.log(error)} )
+const runApp = new ApplicationESB();
+runApp.configInit();
+runApp.startServer();

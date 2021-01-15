@@ -1,12 +1,8 @@
 import boom from "boom";
 import fetch from "node-fetch";
 import Boom from "boom";
-import {ApiRequestManager} from "./ServerManager.js"
+import { ApiRequestManager } from "./ServerManager.js";
 import nconf from "nconf";
-
-const API_1C_BONUS_CLIENT_URL = "http://62.168.226.38:7599/testbd/hs/bonus/";
-const MAIN_DATABASE_URL =
-  "https://5fabd04903a60500167e724e.mockapi.io/testbd/hs/bonus/";
 
 global.Headers = fetch.Headers;
 
@@ -15,10 +11,16 @@ export class BonusController {
     this.retryCodes = [408, 500, 502, 503, 504, 522, 524];
     this.apiRequestManager = new ApiRequestManager();
     this.myHeaders = new Headers();
-    this.myHeaders.append("Authorization", "Basic dHJhY2s6NTZxdHA3");
+    this.nconf = nconf;
+    this.API_1C_BONUS_CLIENT_URL = nconf.get("1C:api_url");
+    this.myHeaders.append(
+      this.nconf.get("api_access_auth:headerName"),
+      this.nconf.get("api_access_auth:creds")
+    );
     this.mongoNative = mongoNative;
     this.factoryAPI = this.factoryAPI.bind(this);
     this.apiClient = this.apiClient.bind(this);
+
     this.requestOptions = {
       method: "GET",
       headers: this.myHeaders,
@@ -31,26 +33,23 @@ export class BonusController {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        name: "retard",
+        name: "admin",
         password: "testpassword",
       }),
     };
     nconf.argv().env();
-    nconf.file({ file: './config/server_config.json' });
+    nconf.file({ file: "./config/server_config.json" });
     nconf.defaults({
-        'http': {
-          'serverAddress': 'localhost',
-          'serverPort': 3000
-        }
+      http: {
+        serverAddress: "localhost",
+        serverPort: 3000,
+      },
     });
-    this.nconf = nconf;
-
-
   }
-  //рекурсивная проверка статуса сервера
+
   async checkClientVerification(req, res, retries = 3, backoff = 300) {
     return fetch(
-      `${API_1C_BONUS_CLIENT_URL}getclient?phone=${req.query.phone}&barcode=${req.query.barcode}`,
+      `${this.API_1C_BONUS_CLIENT_URL}getclient?phone=${req.query.phone}&barcode=${req.query.barcode}`,
       this.requestOptions
     )
       .then((response) => {
@@ -70,7 +69,6 @@ export class BonusController {
       .catch((error) => boom.boomify(error));
   }
 
-  //метод  для проверки клиента в оффлайн базе, если 1С не доступна
   async verifyClient(req, res, reply) {
     if (req.query.phone === undefined || req.query.barcode === undefined) {
       let err = new Error("Not found: phone and barcode required");
@@ -78,11 +76,11 @@ export class BonusController {
       return err;
     }
     console.log(req.query);
-    //запрос к 1С
+
     let clientVerificationData = await this.checkClientVerification(req, res);
     if (!clientVerificationData) {
       let clientDoc = await this.verifyClientInMongo(req);
-      //карту не нашли
+
       if (!clientDoc) {
         return { Error: "Бонусная карта не найдена" }.json();
       }
@@ -90,7 +88,6 @@ export class BonusController {
     } else return clientVerificationData;
   }
 
-  //поиск записи в таблице клиента mongodb
   async verifyClientInMongo(req) {
     const findClient = clients
       .findOne(
@@ -106,12 +103,12 @@ export class BonusController {
       });
   }
 
-  //регистрация API works 100%
   async factoryAPI(req, res) {
-    //если есть параметер с коллекцией
     if (req.body.collection) {
       const token = req.headers["x-access-token"];
-      const urlInsertApi = `http://${this.nconf.get('http:serverAddress')}:${this.nconf.get('http:serverPort')}/app/crud?collection=apies`;
+      const urlInsertApi = `http://${this.nconf.get(
+        "http:serverAddress"
+      )}:${this.nconf.get("http:serverPort")}/app/crud?collection=apies`;
       let checkForName = await this.mongoNative
         .db("rapid_1c_requests")
         .listCollections({ name: req.body.collection })
@@ -119,7 +116,6 @@ export class BonusController {
       let _fieldsAndValues;
       let response_structure = req.body.apiStructure.response_structure;
 
-      //если такая коллекия уже есть
       if (checkForName.length != 0) {
         return res.status(200).send({ message: "такой API уже подключен" });
       }
@@ -135,7 +131,11 @@ export class BonusController {
       } catch (error) {
         return Boom.boomify(error);
       }
-      const createApiReserve = `http://${this.nconf.get('http:serverAddress')}:${this.nconf.get('http:serverPort')}/app/table_factory?collection=${req.body.collection}`;
+      const createApiReserve = `http://${this.nconf.get(
+        "http:serverAddress"
+      )}:${this.nconf.get("http:serverPort")}/app/table_factory?collection=${
+        req.body.collection
+      }`;
 
       let insertRequestOptions = {
         method: "POST",
@@ -229,9 +229,9 @@ export class BonusController {
       return Boom.boomify(error);
     }
     let requestOptions = {
-      method: apiProvider.method, //метод POST, GET, ...
-      headers: apiProvider.headers, //авторзация в API
-      redirect: "follow", //редирект
+      method: apiProvider.method,
+      headers: apiProvider.headers,
+      redirect: "follow",
       body: JSON.stringify(req.body.bodyparams),
     };
 
@@ -294,7 +294,6 @@ export class BonusController {
     }
   }
 
-  //api для синхронизации c 1C
   async insertApi(req, res) {
     if (!req.query.api_name)
       return Boom.badRequest("укажите название API в api_name");
@@ -357,13 +356,17 @@ export class BonusController {
           if (!req.body.update_filter)
             return res.status(200).send(
               JSON.stringify({
-                Failure: `не указан фильтр для update https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/`
+                Failure: `не указан фильтр для update https://docs.mongodb.com/manual/reference/method/db.collection.updateMany/`,
               })
             );
-            
+
           //default false
-          let upsertValue = (req.body.upsert) ? true: false;
-          let updateToApiReserve = await apiReserve.updateMany(req.body.update_filter, requestApi, {upsert: upsertValue });
+          let upsertValue = req.body.upsert ? true : false;
+          let updateToApiReserve = await apiReserve.updateMany(
+            req.body.update_filter,
+            requestApi,
+            { upsert: upsertValue }
+          );
           if (updateToApiReserve.insertedCount > 0) {
             return res.status(200).send(
               JSON.stringify({
@@ -393,4 +396,3 @@ export class BonusController {
     }
   }
 }
-
