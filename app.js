@@ -14,6 +14,16 @@ class ApplicationESB {
   }
 
   startServer() {
+
+    nconf.argv().env();
+    nconf.file({ file: "./config/server_config.json" });
+    nconf.defaults({
+      http: {
+        serverAddress: "localhost",
+        serverPort: 3000,
+      },
+    });
+
     let app = fastify();
     app.get("/", async () => {
       return {
@@ -32,9 +42,9 @@ class ApplicationESB {
 
     async function build() {
       await app.register(middie);
-      await app.register(fastifyFormbody);
       await app.register(fastifyPlugin(dbConnector));
       await app.register(helmet, { contentSecurityPolicy: false });
+      await app.register(fastifyFormbody);
       return app;
     }
 
@@ -51,18 +61,7 @@ class ApplicationESB {
       });
   }
 
-  configInit() {
-    nconf.argv().env();
-    nconf.file({ file: "./config/server_config.json" });
-    nconf.defaults({
-      http: {
-        serverAddress: "localhost",
-        serverPort: 3000,
-      },
-    });
-  }
 }
 
 const runApp = new ApplicationESB();
-runApp.configInit();
 runApp.startServer();

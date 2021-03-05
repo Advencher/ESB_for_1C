@@ -5,7 +5,9 @@
   "main": "entryCli.js",
   "scripts": {
     "start": "node app",
-    "test": "nom run test"
+    "test": "nom run test",
+    "install-windows-service": "winser -i",
+    "uninstall-windows-service": "winser -r"
   },
   "repository": {
     "type": "git",
@@ -26,6 +28,7 @@
   },
   "homepage": "https://github.com/Advencher/amazing#readme",
   "dependencies": {
+    "@adobe/node-fetch-retry": "^1.1.0",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
     "boom": "^7.3.0",
@@ -44,7 +47,7 @@
     "mongoose": "^5.10.12",
     "nconf": "^0.11.0",
     "node-fetch": "^2.6.1",
-    "node-fetch-retry": "^1.1.1"
+    "winser": "^1.0.3"
   },
   "type": "module"
 }

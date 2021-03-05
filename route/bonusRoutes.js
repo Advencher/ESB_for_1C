@@ -13,73 +13,69 @@ export function makeRoutes(fastify, options) {
       method: "GET",
       url: "/app/verify_client",
       preHandler: authController.verifyToken,
-      handler: bonusController.verifyClient,
+      handler: bonusController.verifyClient
     },
     {
       method: "POST",
       url: "/app/api_factory",
       preHandler: authController.verifyToken,
-      handler: bonusController.factoryAPI,
+      handler: bonusController.factoryAPI
     },
     {
       method: "POST",
       url: "/app/api_client",
       preHandler: authController.verifyToken,
-      handler: bonusController.apiClient,
+      handler: bonusController.apiClient
     },
     {
       method: "POST",
       url: "/app/api_insert",
       preHandler: authController.verifyToken,
-      handler: bonusController.insertApi,
+      handler: bonusController.insertApi
     },
 
-    //mongodb database methods
     {
       method: "GET",
       url: "/app/query_data",
       preHandler: authController.verifyToken,
-      handler: mongoController.queryData,
+      handler: mongoController.queryData
     },
     {
       method: "POST",
       url: "/app/table_factory",
       preHandler: authController.verifyToken,
-      handler: mongoController.chageTableProperties,
+      handler: mongoController.chageTableProperties
     },
     {
       method: "POST",
       url: "/app/crud",
       preHandler: authController.verifyToken,
-      handler: mongoController.updateCollection,
+      handler: mongoController.updateCollection
     },
     {
       method: "POST",
       url: "/app/delete_table",
       preHandler: authController.verifyToken,
-      handler: mongoController.deleteTable,
+      handler: mongoController.deleteTable
     },
     //Auth methods
     {
       method: "POST",
-      url: "/auth/register",
-      preHandler: [
-        authController.verifyCodeword,
-        authController.checkDuplecateUserName,
-      ],
-      handler: authController.signUp,
+      url: "/auth/reg",
+      preHandler: authController.registerChecks,
+      handler: authController.registerNewUser
     },
     {
       method: "POST",
       url: "/auth/login",
-      handler: authController.signIn,
+      handler: authController.signIn
     },
     {
       method: "GET",
       url: "/auth/me",
       preHandler: authController.verifyToken,
-      handler: authController.currentUserInfo,
-    },
+      handler: authController.currentUserInfo
+    }
   ];
 
   routes.forEach((route, index) => {

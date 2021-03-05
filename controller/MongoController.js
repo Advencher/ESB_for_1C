@@ -10,7 +10,7 @@ export class MongoController {
   }
 
   async chageTableProperties(req, res) {
-    if (!req.query.collection)
+    if (typeof req.query.collection == 'undefined')
       return Boom.boomify(
         new Error("collection не указан в url в качестве параметра"),
         { statusCode: 400 }
@@ -42,7 +42,7 @@ export class MongoController {
 
   //обработка запроса к mongodb
   async queryData(req, res) {
-    if (!req.query.collection) {
+    if (typeof req.query.collection == 'undefined') {
       return Boom.boomify(new Error(), {
         statusCode: 404,
         message: "Параметр collection не указан",
@@ -84,7 +84,7 @@ export class MongoController {
 
   //методы для управления таблицами в mongodb
   async createKey(req, res, collection) {
-    if (!req.body.new_key || !req.body.data_type)
+    if (typeof req.body.new_key == 'undefined' || typeof req.body.data_type == 'undefined')
       return Boom.boomify(
         new Error(
           "параметер new_key и(или) data_type не указан в body запроса"
@@ -150,7 +150,7 @@ export class MongoController {
 
   //delete key from table
   async deleteKey(req, res, collection) {
-    if (!req.body.remove_key)
+    if (typeof req.body.remove_key == 'undefined')
       return Boom.boomify(
         new Error("нужно указать параметер remove_key в url запроса"),
         { statusCode: 400 }
@@ -185,7 +185,7 @@ export class MongoController {
 
   //update key
   async updateKey(req, res, collection) {
-    if (!req.body.query_object)
+    if (typeof req.body.query_object == 'undefined')
       return Boom.boomify(
         new Error("нужно указать параметер query_object в body запроса"),
         {
@@ -226,7 +226,7 @@ export class MongoController {
 
   //crud operations /app/crud
   async updateCollection(req, res) {
-    if (!req.query.collection)
+    if (typeof req.query.collection == 'undefined')
       return Boom.boomify(
         new Error("collection не указан в url в качестве параметра"),
         { statusCode: 400 }
@@ -256,7 +256,7 @@ export class MongoController {
   }
 
   async crudUpdate(req, res, collection) {
-    if (!req.body.changes.fieldsAndValues)
+    if (typeof req.body.changes.fieldsAndValues == 'undefined')
       return Boom.badRequest("поле(я) для обновления не указаны");
     try {
       let updateResult = await collection.updateMany(
@@ -280,7 +280,7 @@ export class MongoController {
   }
 
   async crudInsert(req, res, collection) {
-    if (!req.body.changes.fieldsAndValues)
+    if (typeof req.body.changes.fieldsAndValues == 'undefined')
       return Boom.badRequest("поле(я) и значения для добавления не указаны");
     try {
       let insertResult = await collection.insert(
@@ -305,8 +305,8 @@ export class MongoController {
   }
 
   async crudDelete(req, res, collection) {
-    if (!req.body.filter)
-      return Boom.badRequest("условие для удаления не указано");
+    if (typeof req.body.filter == 'undefined')
+      return Boom.badRequest("условие (проекция) для удаления не указано");
     try {
       let deleteResult = await collection.deleteMany(req.body.filter);
       if (deleteResult.deleteCount > 0) {
@@ -328,9 +328,9 @@ export class MongoController {
   //https://docs.mongodb.com/manual/reference/method/db.createCollection/
   async createTable(req, res, collection_name) {
     let newCollection;
-    if (!collection_name)
+    if (typeof collection_name == 'undefined')
       return Boom.badRequest("не указано имя новой таблицы для базы данных");
-    if (req.body.options) {
+    if (typeof req.body.options != 'undefined') {
       try {
         newCollection = await this.mongoNative
           .db("rapid_1c_requests")
@@ -354,7 +354,7 @@ export class MongoController {
 
   //method works 100%
   async deleteTable(req, res, collection) {
-    if (!req.body.table_to_delete)
+    if (typeof req.body.table_to_delete == 'undefined')
       return Boom.boomify(new Error("недостаточно параметров"), {
         statusCode: 400,
       });

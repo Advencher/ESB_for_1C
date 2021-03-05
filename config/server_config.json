@@ -1,7 +1,7 @@
 {
     "http": {
     "serverAddress": "localhost",
-    "serverPort": 3000
+    "serverPort": 4000
     },
 
     "api_access_auth": {

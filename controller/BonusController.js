@@ -9,7 +9,7 @@ global.Headers = fetch.Headers;
 export class BonusController {
   constructor(mongoNative) {
     this.retryCodes = [408, 500, 502, 503, 504, 522, 524];
-    this.apiRequestManager = new ApiRequestManager();
+    //this.apiRequestManager = new ApiRequestManager();
     this.myHeaders = new Headers();
     this.nconf = nconf;
     this.API_1C_BONUS_CLIENT_URL = nconf.get("1C:api_url");
@@ -20,13 +20,14 @@ export class BonusController {
     this.mongoNative = mongoNative;
     this.factoryAPI = this.factoryAPI.bind(this);
     this.apiClient = this.apiClient.bind(this);
-
+    this.insertApi = this.insertApi.bind(this);
+    this.verifyClient = this.verifyClient.bind(this);
     this.requestOptions = {
       method: "GET",
       headers: this.myHeaders,
       redirect: "follow",
     };
-    this.verifyClient = this.verifyClient.bind(this);
+
     this.tokenOptions = {
       method: "POST",
       headers: {
@@ -70,7 +71,10 @@ export class BonusController {
   }
 
   async verifyClient(req, res, reply) {
-    if (req.query.phone === undefined || req.query.barcode === undefined) {
+    if (
+      typeof req.query.phone == "undefined" ||
+      typeof req.query.barcode == "undefined"
+    ) {
       let err = new Error("Not found: phone and barcode required");
       err.status = 404;
       return err;
@@ -88,7 +92,7 @@ export class BonusController {
     } else return clientVerificationData;
   }
 
-  async verifyClientInMongo(req) {
+  async verifyClientInMongo(req, res) {
     const findClient = clients
       .findOne(
         {
@@ -104,7 +108,7 @@ export class BonusController {
   }
 
   async factoryAPI(req, res) {
-    if (req.body.collection) {
+    if (typeof req.body.collection !== "undefined") {
       const token = req.headers["x-access-token"];
       const urlInsertApi = `http://${this.nconf.get(
         "http:serverAddress"
@@ -187,14 +191,9 @@ export class BonusController {
     }
   }
 
-  async apiClient(req, res) {
-    if (!req.query.api_name) return Boom.badRequest("укажите api_name");
-    let apiProvider = await this.mongoNative
-      .db("rapid_1c_requests")
-      .collection("apies")
-      .findOne({ collection: req.query.api_name });
+  prepareAPIprops(req, res, apiProvider) {
     try {
-      if (req.body.bodyparams) {
+      if (typeof req.body.bodyparams != "undefined") {
         let counterKey = 0;
         for (let key in req.body.bodyparams) {
           counterKey++;
@@ -209,7 +208,7 @@ export class BonusController {
             Failure: `количество предоставленных ключей для BODY запроса - ${req.query.api_name} не совпадает с зарегестрированным количеством`,
           });
       }
-      if (req.body.urlparams) {
+      if (typeof req.body.urlparams != "undefined") {
         let counterKey = 0;
         for (let key in req.body.urlparams) {
           counterKey++;
@@ -235,8 +234,12 @@ export class BonusController {
       body: JSON.stringify(req.body.bodyparams),
     };
 
+    return requestOptions;
+  }
+
+  buildURLstring(req, apiProvider) {
     let urlAPI = `${apiProvider.api_url}`;
-    if (req.body.urlparams) {
+    if (typeof req.body.urlparams != "undefined") {
       let index = 0;
       urlAPI += `?`;
       for (let param of apiProvider.urlparams) {
@@ -246,47 +249,71 @@ export class BonusController {
         if (index !== apiProvider.urlparams.length) urlAPI += `&`;
       }
     }
-    try {
-      let requestApi = await this.apiRequestManager.checkAPIForUp(
-        urlAPI,
-        requestOptions
-      );
-      let apiReserve = await this.mongoNative
-        .db("rapid_1c_requests")
-        .collection(apiProvider.collection);
-      let memento = {};
-      if (req.body.bodyparams) memento.bodyparams = req.body.bodyparams;
-      if (req.body.urlparams) memento.urlparams = req.body.urlparams;
+    return urlAPI;
+  }
 
-      if (requestApi.serverError) {
-        let searchForLatestEntry;
-        searchForLatestEntry = await apiReserve.findOne(
-          { memento: memento },
-          { _id: 0, sort: { $natural: -1 }, limit: 1 }
-        );
-        if (searchForLatestEntry) {
-          return JSON.stringify({ ...searchForLatestEntry, ...requestApi });
-        } else {
-          return JSON.stringify({
-            Error: `1C не доступна и в базе отсутcтвуют актуальные данные `,
-            apiName: apiProvider.collection,
-            usedURL: urlAPI,
-            ...requestApi,
-          });
+  async apiClient(req, res) {
+    if (typeof req.query.api_name == "undefined")
+      return Boom.badRequest("укажите api_name");
+    let apiProvider = await this.mongoNative
+      .db("rapid_1c_requests")
+      .collection("apies")
+      .findOne({ collection: req.query.api_name });
+    let requestOptions = this.prepareAPIprops(req, res, apiProvider);
+    if (requestOptions.status === 200) return;
+    let urlAPI = this.buildURLstring(req, apiProvider);
+    let requestManager = new ApiRequestManager(urlAPI, req.body.mode, requestOptions, req.body.ringOpt);
+
+    try {
+      if (req.query.mode !== "store") {
+        let requestApi = requestManager.makeApiCall();
+        return res.status(200).send(JSON.stringify(
+          {
+            message: `запрос на ресурс ${urlAPI} был отправлен`,
+            params: {
+              time_settings: req.body.ringOpt,
+              request_options: requestOptions
+            } 
+          }
+        ));
+      } else if (req.query.mode === "store") {
+        let requestApi = await requestManager.makeApiCall();
+        let apiReserve = await this.mongoNative
+          .db("rapid_1c_requests")
+          .collection(apiProvider.collection);
+        let memento = {};
+        if (req.body.bodyparams) memento.bodyparams = req.body.bodyparams;
+        if (req.body.urlparams) memento.urlparams = req.body.urlparams;
+        if (requestApi.serverError) {
+          let searchForLatestEntry;
+          searchForLatestEntry = await apiReserve.findOne(
+            { memento: memento },
+            { _id: 0, sort: { $natural: -1 }, limit: 1 }
+          );
+          if (searchForLatestEntry) {
+            return JSON.stringify({ ...searchForLatestEntry, ...requestApi });
+          } else {
+            return JSON.stringify({
+              Error: `API не доступнен в данный момент и в базе отсутcтвуют актуальные данные `,
+              apiName: apiProvider.collection,
+              usedURL: urlAPI,
+              ...requestApi,
+            });
+          }
         }
-      }
-      if (requestApi.myFlag) {
-        delete requestApi.myFlag;
-        let combinedEntry = { ...requestApi, memento: memento };
-        let insertToApiReserve = await apiReserve.findOneAndReplace(
-          { memento: combinedEntry.memento },
-          combinedEntry,
-          { upsert: true }
-        );
-        if (insertToApiReserve.ok) {
-          return res
-            .status(200)
-            .send(JSON.stringify({ ...requestApi, memento: memento }));
+        if (requestApi.myFlag) {
+          delete requestApi.myFlag;
+          let combinedEntry = { ...requestApi, memento: memento };
+          let insertToApiReserve = await apiReserve.findOneAndReplace(
+            { memento: combinedEntry.memento },
+            combinedEntry,
+            { upsert: true }
+          );
+          if (insertToApiReserve.ok) {
+            return res
+              .status(200)
+              .send(JSON.stringify({ ...requestApi, memento: memento }));
+          }
         }
       }
     } catch (error) {
@@ -295,7 +322,7 @@ export class BonusController {
   }
 
   async insertApi(req, res) {
-    if (!req.query.api_name)
+    if (typeof req.query.api_name == "undefined")
       return Boom.badRequest("укажите название API в api_name");
     let apiProvider = await this.mongoNative
       .db("rapid_1c_requests")
@@ -321,18 +348,8 @@ export class BonusController {
       redirect: "follow", //редирект
       body: JSON.stringify(req.body.bodyparams),
     };
-    //формирование ссылки на запрос
-    let urlAPI = `${apiProvider.api_url}`;
-    if (req.body.urlparams) {
-      let index = 0;
-      urlAPI += `?`;
-      for (let param of apiProvider.urlparams) {
-        urlAPI += `${param}=${req.body.urlparams[param]}`;
-        index++;
 
-        if (index !== apiProvider.urlparams.length) urlAPI += `&`;
-      }
-    }
+    let urlAPI = this.buildURLstring(req, apiProvider);
 
     let requestApi = await this.apiRequestManager.checkAPIForUp(
       urlAPI,
@@ -343,7 +360,7 @@ export class BonusController {
       //search in mongoDB
       //TO DO: test function
       return JSON.stringify({
-        Error: `1C API с url ${apiProvider.api_url} не доступен (1С сервер не работает)`,
+        Error: `API с url ${apiProvider.api_url} не доступен (1С сервер не работает)`,
         api_name: apiProvider.collection,
         apiURL: apiProvider.api_url,
       });

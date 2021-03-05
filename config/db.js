@@ -28,8 +28,21 @@ export async function dbConnector(fastify, options, done) {
       useUnifiedTopology: true,
     });
     console.log("Database is connected via native mongo driver");
-    await dbNative.db("rapid_1c_requests").createCollection("apies");
-
+	let existingNames = await dbNative.db("rapid_1c_requests").listCollections().toArray();
+	let names = ["apies", "users"];
+	for (let  collection of  existingNames) {
+		if (collection.name === "apies" || collection.name === "users" ) {
+			names.splice(names.indexOf(collection.name), 1);
+		}
+	}
+	
+	for (let name of names) {
+		await dbNative.db("rapid_1c_requests").createCollection(name);
+	}
+	
+ 
     fastify.decorate("mongoNative", dbNative);
-  } catch (err) {}
+  } catch (err) {
+	  console.log(err);
+  }
 }
